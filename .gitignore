@@ -1,0 +1,4 @@
+.DS_Store
+*.json.bak
+uras-famiglia-backup-*.json
+node_modules/

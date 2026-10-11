@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uras Famiglia</title>
+<meta name="description" content="Anagrafiche di clienti e fornitori">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icone/icona-192.png">
+<link rel="apple-touch-icon" href="icone/icona-180.png">
+<meta name="theme-color" content="#1f5a4c">
+<link rel="stylesheet" href="stile.css">
+</head>
+<body>
+
+<header class="testata">
+  <div class="testata-riga">
+    <div class="marchio">
+      <img src="icone/icona-192.png" alt="" width="40" height="40">
+      <div>
+        <div class="marchio-nome">Uras Famiglia</div>
+        <div class="marchio-sotto">Clienti e fornitori</div>
+      </div>
+    </div>
+    <div class="stato-archivio" id="stato-archivio" aria-live="polite"></div>
+  </div>
+  <nav class="schede" aria-label="Pagine">
+    <a class="scheda" href="#cliente" data-pagina="cliente"><span class="scheda-icona" aria-hidden="true">👤</span>Nuova Anagrafica<br>Cliente</a>
+    <a class="scheda" href="#fornitore" data-pagina="fornitore"><span class="scheda-icona" aria-hidden="true">🚚</span>Nuova Anagrafica<br>Fornitore</a>
+    <a class="scheda" href="#riepilogo" data-pagina="riepilogo"><span class="scheda-icona" aria-hidden="true">📋</span>Riepilogo<br>Anagrafica</a>
+    <a class="scheda" href="#estrazione" data-pagina="estrazione"><span class="scheda-icona" aria-hidden="true">📤</span>Ricerca ed<br>Estrazione</a>
+    <a class="scheda" href="#configurazione" data-pagina="configurazione"><span class="scheda-icona" aria-hidden="true">⚙️</span>Configurazione<br>Database</a>
+    <a class="scheda" href="#backup" data-pagina="backup"><span class="scheda-icona" aria-hidden="true">💾</span>Backup e<br>Ripristino</a>
+  </nav>
+</header>
+
+<div class="promemoria" id="promemoria-backup" hidden>
+  <span>💾 Non fai un backup da un po'. Ti consiglio di farne uno adesso: richiede pochi secondi.</span>
+  <a class="pulsante piccolo" href="#backup">Vai al backup</a>
+</div>
+
+<main id="contenuto">
+  <div class="caricamento" id="caricamento">Apertura dell'archivio…</div>
+
+  <!-- Le due pagine anagrafiche sono costruite da app.js (sono identiche) -->
+  <section class="pagina" id="pagina-cliente" data-soggetto="cliente" hidden></section>
+  <section class="pagina" id="pagina-fornitore" data-soggetto="fornitore" hidden></section>
+
+  <!-- ================= RIEPILOGO ANAGRAFICA ================= -->
+  <section class="pagina" id="pagina-riepilogo" hidden>
+    <h1>Riepilogo Anagrafica</h1>
+    <p class="spiega">Qui puoi solo <strong>consultare</strong> i dati. Scegli <strong>Chi</strong> cerchi, compila almeno un altro campo e premi <strong>Cerca</strong>. Puoi scrivere anche solo una parte: “Mar” trova Mario, Marco e Martina.</p>
+    <form class="riquadro" id="form-riepilogo" novalidate autocomplete="off">
+      <div class="griglia">
+        <label class="campo">
+          <span class="etichetta">Chi <em class="obbl">obbligatorio</em></span>
+          <select name="chi">
+            <option value="">— scegli —</option>
+            <option value="cliente">Cliente</option>
+            <option value="fornitore">Fornitore</option>
+          </select>
+        </label>
+        <div class="campo" data-combo="riepilogo">
+          <span class="etichetta">Tipologia <em class="facolt">facoltativo</em></span>
+        </div>
+        <label class="campo"><span class="etichetta">Nome <em class="facolt">facoltativo</em></span><input name="nome" type="text"></label>
+        <label class="campo"><span class="etichetta">Cognome <em class="facolt">facoltativo</em></span><input name="cognome" type="text"></label>
+        <label class="campo"><span class="etichetta">Telefono <em class="facolt">facoltativo</em></span><input name="telefono" type="text" inputmode="tel"></label>
+        <label class="campo"><span class="etichetta">Mail <em class="facolt">facoltativo</em></span><input name="mail" type="text" inputmode="email"></label>
+      </div>
+      <div class="azioni">
+        <button class="pulsante primario" type="submit">🔍 Cerca</button>
+        <button class="pulsante" type="button" data-svuota>Svuota i campi</button>
+      </div>
+      <div class="messaggio" data-messaggio role="status" hidden></div>
+    </form>
+    <div id="risultati-riepilogo"></div>
+  </section>
+
+  <!-- ================= RICERCA ED ESTRAZIONE ================= -->
+  <section class="pagina" id="pagina-estrazione" hidden>
+    <h1>Ricerca ed Estrazione</h1>
+    <p class="spiega">Scegli il <strong>soggetto</strong> e la <strong>tipologia</strong>, poi premi <strong>Estrai</strong>. Potrai copiare i dati o scaricarli in un file Excel.</p>
+    <form class="riquadro" id="form-estrazione" novalidate autocomplete="off">
+      <div class="griglia">
+        <label class="campo">
+          <span class="etichetta">Soggetto <em class="obbl">obbligatorio</em></span>
+          <select name="soggetto">
+            <option value="">— scegli —</option>
+            <option value="cliente">Cliente</option>
+            <option value="fornitore">Fornitore</option>
+          </select>
+        </label>
+        <div class="campo" data-combo="estrazione">
+          <span class="etichetta">Tipologia <em class="obbl">obbligatorio</em></span>
+        </div>
+      </div>
+      <div class="azioni">
+        <button class="pulsante primario" type="submit">📤 Estrai</button>
+      </div>
+      <div class="messaggio" data-messaggio role="status" hidden></div>
+    </form>
+    <div class="avviso-filtri" id="avviso-filtri" hidden>Hai cambiato i filtri: premi <strong>Estrai</strong> per aggiornare la tabella. Per ora vedi ancora i risultati di prima.</div>
+    <div id="risultati-estrazione"></div>
+  </section>
+
+  <!-- ================= CONFIGURAZIONE DATABASE ================= -->
+  <section class="pagina" id="pagina-configurazione" hidden>
+    <h1>Configurazione Database</h1>
+    <p class="spiega">Qui si creano, rinominano ed eliminano le <strong>tipologie</strong>. È l'unico posto dove farlo. Clienti e fornitori hanno due elenchi separati.</p>
+    <form class="riquadro" id="form-tipologia" novalidate autocomplete="off">
+      <h2>Crea una nuova tipologia</h2>
+      <div class="passo">
+        <span class="passo-numero">1</span>
+        <fieldset class="scelta-soggetto">
+          <legend class="etichetta">Per chi è? <em class="obbl">obbligatorio</em></legend>
+          <label class="opzione"><input type="radio" name="soggetto" value="cliente"> Cliente</label>
+          <label class="opzione"><input type="radio" name="soggetto" value="fornitore"> Fornitore</label>
+        </fieldset>
+      </div>
+      <div class="passo">
+        <span class="passo-numero">2</span>
+        <label class="campo largo">
+          <span class="etichetta">Nome della tipologia <em class="obbl">obbligatorio</em></span>
+          <input name="nome" type="text" maxlength="60" placeholder="Per esempio: Moto">
+        </label>
+      </div>
+      <div class="passo">
+        <span class="passo-numero">3</span>
+        <button class="pulsante primario" type="submit">✔ Salva</button>
+      </div>
+      <div class="messaggio" data-messaggio role="status" hidden></div>
+    </form>
+    <div class="due-colonne">
+      <div class="riquadro">
+        <h2>Tipologie dei clienti</h2>
+        <div id="elenco-tipologie-cliente"></div>
+      </div>
+      <div class="riquadro">
+        <h2>Tipologie dei fornitori</h2>
+        <div id="elenco-tipologie-fornitore"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BACKUP E RIPRISTINO ================= -->
+  <section class="pagina" id="pagina-backup" hidden>
+    <h1>Backup e Ripristino</h1>
+    <p class="spiega">I dati sono salvati <strong>solo in questo computer</strong>, dentro questo browser. Il backup è una copia di sicurezza in un file: conservala in una chiavetta USB o mandala per mail a te stesso.</p>
+    <div class="riquadro">
+      <h2>In archivio adesso</h2>
+      <div class="conteggi" id="conteggi"></div>
+    </div>
+    <div class="due-colonne">
+      <div class="riquadro">
+        <h2>💾 Esporta backup</h2>
+        <p>Scarica un file con <strong>tutti</strong> i clienti, i fornitori, le tipologie e i collegamenti tra loro.</p>
+        <p class="ultimo-backup" id="ultimo-backup"></p>
+        <button class="pulsante primario" type="button" id="esporta-backup">💾 Esporta backup</button>
+        <div class="messaggio" id="messaggio-esporta" role="status" hidden></div>
+      </div>
+      <div class="riquadro">
+        <h2>♻️ Ripristina backup</h2>
+        <p>Scegli un file di backup salvato in precedenza. I dati del file vengono <strong>aggiunti</strong> a quelli presenti: <strong>niente viene cancellato o sovrascritto</strong>.</p>
+        <button class="pulsante" type="button" id="ripristina-backup">♻️ Ripristina backup</button>
+        <input type="file" id="file-backup" accept=".json,application/json" hidden>
+        <div class="messaggio" id="messaggio-ripristino" role="status" hidden></div>
+      </div>
+    </div>
+    <div id="esito-ripristino"></div>
+  </section>
+</main>
+
+<div class="copiato" id="copiato" role="status" aria-live="polite" hidden></div>
+
+<script src="archivio.js"></script>
+<script src="excel.js"></script>
+<script src="memoria.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
