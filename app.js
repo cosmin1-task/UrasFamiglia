@@ -1,4 +1,4 @@
-/* Uras Famiglia - la pagina.
+/* Apia - la pagina.
    Collega i moduli e i pulsanti alle regole di archivio.js.
    Ogni modifica segue lo stesso giro: copio l'archivio, applico la regola,
    se va bene salvo nella memoria del browser e solo allora la rendo
@@ -936,7 +936,7 @@ function scaricaExcel() {
   const e = stato.estrazione;
   if (!e || !e.righe.length) return;
   const byte = Excel.crea(INTESTAZIONI, e.righe, maiuscola(P[e.soggetto].tanti) + ' ' + e.tipologia);
-  const nome = nomeFile('Uras Famiglia - ' + maiuscola(P[e.soggetto].tanti) + ' - ' + e.tipologia + ' - ' + oggi()) + '.xlsx';
+  const nome = nomeFile('Apia - ' + maiuscola(P[e.soggetto].tanti) + ' - ' + e.tipologia + ' - ' + oggi()) + '.xlsx';
   scarica(byte, nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   avvisoBreve('⬇ File Excel scaricato: “' + nome + '”. Lo trovi nella cartella Download.');
 }
@@ -1040,7 +1040,7 @@ function avviaBackup() {
     const adesso = new Date();
     const b = A.creaBackup(stato.a, adesso);
     const z = (n) => String(n).padStart(2, '0');
-    const nome = 'uras-famiglia-backup-' + oggi() + '-' + z(adesso.getHours()) + z(adesso.getMinutes()) + '.json';
+    const nome = 'apia-backup-' + oggi() + '-' + z(adesso.getHours()) + z(adesso.getMinutes()) + '.json';
     scarica(JSON.stringify(b, null, 1), nome, 'application/json');
     await cambia((a) => { a.ultimoBackup = adesso.toISOString(); return { ok: true }; });
     messaggio(m, 'ok', 'Backup scaricato con il nome “' + nome + '”: lo trovi nella cartella Download. Copialo su una chiavetta USB o mandalo per mail a te stesso.');
@@ -1148,6 +1148,7 @@ async function sincronizzaCartella() {
   }
   const daFile = A.daBackup(f.backup);
   if (A.impronta(daFile) === A.impronta(stato.a)) {
+    if (f.vecchio) { await Cartella.scrivi(stato.a, true); return; } // riscrivo col nome nuovo
     Cartella.ricorda(f.modificato);
     Cartella.imposta('attiva');
     return;
@@ -1196,7 +1197,7 @@ async function scegliCartella() {
       else {
         const scelta = await apriFinestra({
           titolo: 'Nella cartella c\'è già un archivio',
-          corpo: '<p>La cartella «' + esc(dir.name) + '» contiene già dei dati di Uras Famiglia, diversi da quelli di questo computer. Quale vuoi usare?</p>'
+          corpo: '<p>La cartella «' + esc(dir.name) + '» contiene già dei dati di Apia, diversi da quelli di questo computer. Quale vuoi usare?</p>'
             + '<ul><li><strong>Nella cartella</strong>: ' + esc(descriviArchivio(daFile)) + (f.backup.creato ? ' (salvati il ' + esc(dataLeggibile(f.backup.creato)) + ')' : '') + '</li>'
             + '<li><strong>Su questo computer</strong>: ' + esc(descriviArchivio(stato.a)) + (stato.a.salvato ? ' (salvati il ' + esc(dataLeggibile(stato.a.salvato)) + ')' : '') + '</li></ul>'
             + '<p>Quelli che non scegli <strong>non vanno persi</strong>: li metto come copia nella sottocartella “copie”, e potrai recuperarli con “Ripristina backup”.</p>',
@@ -1284,12 +1285,12 @@ function disegnaCartella() {
   const COSA_C_E = '<p class="piccolo">Nella cartella trovi il file <strong>' + Cartella.NOME_FILE + '</strong> (sempre aggiornato) e, nella sottocartella <strong>copie</strong>, una copia per ogni giorno di lavoro (le ultime ' + Cartella.COPIE_DA_TENERE + '). Se la cartella è dentro <strong>OneDrive</strong>, le copie finiscono anche su internet.</p>';
   let b = '', r = '', t = '', classeT = '';
   if (st === 'non-supportato') {
-    b = '<span>⚠ Questo browser non può salvare i dati in una cartella del computer. Apri Uras Famiglia con <strong>Microsoft Edge</strong> o <strong>Google Chrome</strong>.</span>';
+    b = '<span>⚠ Questo browser non può salvare i dati in una cartella del computer. Apri Apia con <strong>Microsoft Edge</strong> o <strong>Google Chrome</strong>.</span>';
     r = '<p>Questo browser non permette di salvare in una cartella del computer. Per avere il salvataggio automatico apri l\'app con <strong>Microsoft Edge</strong> o <strong>Google Chrome</strong>. Nel frattempo usa il backup qui sotto.</p>';
     t = 'Dati solo nel browser'; classeT = 'attenzione';
   } else if (st === 'non-scelta') {
     if (!cartellaPiuTardi) b = '<span>📁 <strong>Scegli una cartella del computer</strong> dove salvare i dati in automatico, così non si perdono.</span><span class="azioni-striscia">' + P_SCEGLI + '<button type="button" class="pulsante piccolo" data-cartella="dopo">Più tardi</button></span>';
-    r = '<p>Scegli una cartella: ogni volta che salvi qualcosa, l\'app scrive lì una copia completa dei dati, da sola. Ti consiglio di creare una cartella <strong>“Uras Famiglia”</strong> dentro <strong>Documenti</strong> (o dentro OneDrive, se lo usi).</p>'
+    r = '<p>Scegli una cartella: ogni volta che salvi qualcosa, l\'app scrive lì una copia completa dei dati, da sola. Ti consiglio di creare una cartella <strong>“Apia”</strong> dentro <strong>Documenti</strong> (o dentro OneDrive, se lo usi).</p>'
       + '<p class="piccolo">Il browser ti chiederà il permesso di modificare i file della cartella: rispondi <strong>“Consenti a ogni visita”</strong> (o “Modifica file”, poi “Consenti”).</p>'
       + '<div class="azioni">' + P_SCEGLI + '</div>';
     t = 'Cartella non scelta'; classeT = 'attenzione';
@@ -1388,7 +1389,7 @@ function mostraPagina() {
     a.classList.toggle('attiva', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
-  document.title = TITOLI[nome] + ' · Uras Famiglia';
+  document.title = TITOLI[nome] + ' · Apia';
   window.scrollTo(0, 0);
 }
 
@@ -1403,7 +1404,7 @@ async function avvia() {
     stato.a = await Memoria.carica();
   } catch (e) {
     $('#caricamento').innerHTML = '<div class="messaggio ko">Non riesco ad aprire l\'archivio: ' + esc(e.message)
-      + '<br><br>Chiudi tutte le finestre di Uras Famiglia e riapri l\'app. Se usi una finestra “in incognito” o “InPrivate”, usa una finestra normale.</div>';
+      + '<br><br>Chiudi tutte le finestre di Apia e riapri l\'app. Se usi una finestra “in incognito” o “InPrivate”, usa una finestra normale.</div>';
     return;
   }
   $('#caricamento').remove();

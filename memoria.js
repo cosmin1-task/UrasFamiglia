@@ -1,4 +1,4 @@
-/* Uras Famiglia - la memoria del browser.
+/* Apia - la memoria del browser.
    L'archivio si salva nel browser del computer (IndexedDB), non su internet.
    Resta li' anche quando l'app viene aggiornata: gli aggiornamenti cambiano
    solo il programma, mai questa memoria.
@@ -26,7 +26,7 @@ const Memoria = (function () {
         ok(db);
       };
       r.onerror = () => ko(r.error || new Error('Memoria non disponibile'));
-      r.onblocked = () => ko(new Error('Chiudi le altre finestre di Uras Famiglia e ricarica la pagina.'));
+      r.onblocked = () => ko(new Error('Chiudi le altre finestre di Apia e ricarica la pagina.'));
     });
   }
 

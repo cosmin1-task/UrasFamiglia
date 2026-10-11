@@ -1,14 +1,14 @@
-/* Uras Famiglia - service worker.
+/* Apia - service worker.
    Serve a due cose: aprire l'app anche senza internet e ricevere gli
    aggiornamenti. Prima prova sempre a scaricare la versione nuova dalla
    rete; se non c'e' connessione usa la copia salvata.
    I DATI non passano di qui: stanno nella memoria del browser (IndexedDB)
    e un aggiornamento dell'app non li tocca. */
 
-const CACHE = 'uras-famiglia-v2';
+const CACHE = 'uras-famiglia-v3';
 const FILE = [
   './', 'index.html', 'stile.css', 'archivio.js', 'excel.js', 'memoria.js', 'cartella.js', 'app.js',
-  'manifest.webmanifest', 'icone/icona-192.png', 'icone/icona-512.png', 'icone/icona-180.png',
+  'manifest.webmanifest', 'icone/logo.png', 'icone/favicon-48.png', 'icone/icona-192.png', 'icone/icona-512.png', 'icone/icona-512-maskable.png', 'icone/icona-180.png',
 ];
 
 self.addEventListener('install', (e) => {

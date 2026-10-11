@@ -1,4 +1,4 @@
-/* Uras Famiglia - l'archivio.
+/* Apia - l'archivio.
    Qui stanno TUTTE le regole su come cambiano i dati: cosa si accetta,
    cosa si rifiuta, come si cerca, come si ripristina un backup.
 
@@ -368,7 +368,7 @@
      Riceve il testo del file; restituisce { ok, backup } o { ok:false, errore }. */
   function leggiBackup(testo) {
     let b;
-    const nonValido = { ok: false, errore: 'Questo file non è un backup di Uras Famiglia. Scegli il file che hai salvato con "Esporta backup": si chiama uras-famiglia-backup-… e finisce con .json.' };
+    const nonValido = { ok: false, errore: 'Questo file non è un backup di Apia. Scegli il file che hai salvato con "Esporta backup" (si chiama apia-backup-… e finisce con .json) oppure una copia della cartella (archivio-apia-….json).' };
     try { b = JSON.parse(testo); } catch (e) { return nonValido; }
     if (!b || typeof b !== 'object' || b.formato !== FORMATO_BACKUP) return nonValido;
     if (typeof b.versione !== 'number' || b.versione > VERSIONE)

@@ -1,4 +1,6 @@
-# Uras Famiglia
+# Apia — Clienti e fornitori
+
+App per **A.P.I.A. dei F.lli Onnis snc** (Ussaramanna). Il progetto è nato col nome provvisorio "Uras Famiglia": il repository e l'indirizzo online (`cosmin1-task.github.io/UrasFamiglia`) hanno ancora quel nome.
 
 Web app per registrare **clienti e fornitori**, associarli a una o più **tipologie**, cercarli ed esportarli in **Excel**. Fatta per una sola persona che usa poco il computer: pulsanti grandi, nomi chiari, conferme prima di ogni eliminazione.
 
@@ -21,9 +23,9 @@ In due posti, sempre sul computer del cliente (mai su internet né su GitHub: il
 
 1. **Nel browser** (IndexedDB): sempre.
 2. **In una cartella del PC scelta dal cliente** (da Edge o Chrome, con la File System Access API): a ogni salvataggio l'app riscrive da sola
-   - `archivio-uras.json`, l'archivio completo;
-   - `copie/archivio-uras-AAAA-MM-GG.json`, una copia per giorno (tiene le ultime 30);
-   - `copie/archivio-uras-<motivo>-<ora>.json`, una copia fatta prima di sostituire dei dati (non viene mai cancellata).
+   - `archivio-apia.json`, l'archivio completo (il vecchio nome `archivio-uras.json` viene ancora letto);
+   - `copie/archivio-apia-AAAA-MM-GG.json`, una copia per giorno (tiene le ultime 30);
+   - `copie/archivio-apia-<motivo>-<ora>.json`, una copia fatta prima di sostituire dei dati (non viene mai cancellata).
 
    Sono tutti nel formato del backup, quindi si possono usare anche con "Ripristina backup".
 
@@ -42,8 +44,8 @@ Come vanno d'accordo i due posti:
 
 1. Aprire in **Edge** (o Chrome) l'indirizzo della pagina GitHub Pages.
 2. Edge: menu **⋯ → App → Installa questo sito come app**. Chrome: icona **Installa** nella barra degli indirizzi.
-3. Comparirà l'icona **Uras Famiglia** sul desktop e nel menu Start: aprire sempre da lì.
-4. Al primo avvio premere **Scegli la cartella** e indicare una cartella nuova, per esempio `Documenti\Uras Famiglia` (o dentro OneDrive). Quando il browser chiede il permesso, scegliere **Consenti a ogni visita**.
+3. Comparirà l'icona **Apia** sul desktop e nel menu Start: aprire sempre da lì.
+4. Al primo avvio premere **Scegli la cartella** e indicare una cartella nuova, per esempio `Documenti\Apia` (o dentro OneDrive). Quando il browser chiede il permesso, scegliere **Consenti a ogni visita**.
 
 ## File
 
@@ -56,7 +58,7 @@ Come vanno d'accordo i due posti:
 | `memoria.js` | Salvataggio nel browser (IndexedDB) |
 | `cartella.js` | Lettura e scrittura del file nella cartella del PC |
 | `excel.js` | Crea il file .xlsx senza librerie esterne (telefoni come testo) |
-| `sw.js`, `manifest.webmanifest`, `icone/` | Funzionamento come app installata e senza internet |
+| `sw.js`, `manifest.webmanifest`, `icone/` | Funzionamento come app installata e senza internet; `icone/logo.png` è il logo A.P.I.A. con lo sfondo tolto |
 | `prove/archivio.prova.js` | Prove automatiche delle regole |
 
 ## Prove

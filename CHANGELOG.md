@@ -1,5 +1,11 @@
 # Cronologia
 
+## 1.2 — 11 ottobre 2026
+
+- Nuovo nome: **Apia — Clienti e fornitori** (prima "Uras Famiglia"), nella testata, nel titolo della finestra e nell'app installata.
+- Logo A.P.I.A. nella testata e come icona dell'app.
+- File con il nuovo nome: `apia-backup-….json`, `Apia - ….xlsx`, `archivio-apia.json` nella cartella (il vecchio `archivio-uras.json` viene ancora letto, e i backup fatti prima restano validi).
+
 ## 1.1 — 11 ottobre 2026
 
 - Salvataggio automatico in una cartella del PC scelta dal cliente (Edge/Chrome): file `archivio-uras.json` riscritto a ogni modifica, una copia al giorno in `copie/` (ultime 30), lettura all'apertura e quando l'app torna in primo piano. Se browser e cartella sono diversi vince il più recente, l'altro viene conservato come copia.

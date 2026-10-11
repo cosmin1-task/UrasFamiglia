@@ -1,11 +1,11 @@
-/* Uras Famiglia - la cartella sul computer.
+/* Apia - la cartella sul computer.
    Con Microsoft Edge e Google Chrome una web app puo' leggere e scrivere
    file in una cartella scelta dall'utente (File System Access API).
 
    Nella cartella scelta ci sono:
-     archivio-uras.json            l'archivio, riscritto a ogni salvataggio
-     copie/archivio-uras-AAAA-MM-GG.json   una copia per giorno (le ultime 30)
-     copie/archivio-uras-...-ORA.json      copie fatte prima di sostituire dati
+     archivio-apia.json            l'archivio, riscritto a ogni salvataggio
+     copie/archivio-apia-AAAA-MM-GG.json   una copia per giorno (le ultime 30)
+     copie/archivio-apia-...-ORA.json      copie fatte prima di sostituire dati
    Sono tutti nel formato del backup: si possono usare anche con
    "Ripristina backup".
 
@@ -13,11 +13,12 @@
    la cartella e il browser hanno dati diversi lo decide app.js. */
 
 const Cartella = (function () {
-  const NOME_FILE = 'archivio-uras.json';
+  const NOME_FILE = 'archivio-apia.json';
+  const NOME_VECCHIO = 'archivio-uras.json'; // nome usato fino alla versione 1.1
   const NOME_COPIE = 'copie';
   const COPIE_DA_TENERE = 30;
   const CHIAVE = 'cartella';
-  const GIORNALIERA = /^archivio-uras-\d{4}-\d{2}-\d{2}\.json$/;
+  const GIORNALIERA = /^archivio-(apia|uras)-\d{4}-\d{2}-\d{2}\.json$/;
 
   const supportata = typeof window.showDirectoryPicker === 'function';
 
@@ -99,21 +100,22 @@ const Cartella = (function () {
 
   /* ---------- lettura ---------- */
 
-  /* Legge archivio-uras.json dalla cartella (quella collegata o quella data).
+  /* Legge archivio-apia.json (o il vecchio archivio-uras.json) dalla cartella (quella collegata o quella data).
      { stato: 'assente' } | { stato: 'ok', backup, testo, modificato } | { stato: 'rovinato', testo, errore } */
   async function leggi(dir) {
     const d = dir || cartella;
     let fh;
+    let vecchio = false;
     try { fh = await d.getFileHandle(NOME_FILE); } catch (e) {
-      if (e && e.name === 'NotFoundError') return { stato: 'assente' };
       if (e && e.name === 'TypeMismatchError') return { stato: 'rovinato', testo: '', errore: 'Nella cartella c\'è una sottocartella chiamata ' + NOME_FILE + ' al posto del file.' };
-      throw e;
+      if (!e || e.name !== 'NotFoundError') throw e;
+      try { fh = await d.getFileHandle(NOME_VECCHIO); vecchio = true; } catch (e2) { return { stato: 'assente' }; }
     }
     const f = await fh.getFile();
     const t = await f.text();
     const l = Archivio.leggiBackup(t);
     if (!l.ok) return { stato: 'rovinato', testo: t, errore: l.errore };
-    return { stato: 'ok', backup: l.backup, testo: t, modificato: f.lastModified };
+    return { stato: 'ok', backup: l.backup, testo: t, modificato: vecchio ? -1 : f.lastModified, vecchio };
   }
 
   // La data di modifica del file, senza leggerlo: serve a capire se qualcun
@@ -140,7 +142,7 @@ const Cartella = (function () {
     ultimaModifica = (await fh.getFile()).lastModified;
     ultimoSalvataggio = new Date();
     const copie = await cartella.getDirectoryHandle(NOME_COPIE, { create: true });
-    await scriviFile(copie, 'archivio-uras-' + giorno(ultimoSalvataggio) + '.json', t);
+    await scriviFile(copie, 'archivio-apia-' + giorno(ultimoSalvataggio) + '.json', t);
     if (potatoIl !== giorno(ultimoSalvataggio)) {
       potatoIl = giorno(ultimoSalvataggio);
       await pota(copie).catch(() => {});
@@ -187,7 +189,7 @@ const Cartella = (function () {
   // Una copia "di sicurezza" nella sottocartella copie, prima di sostituire dei dati.
   async function scriviCopia(etichetta, contenuto) {
     const copie = await cartella.getDirectoryHandle(NOME_COPIE, { create: true });
-    const nome = 'archivio-uras-' + etichetta + '-' + momento(new Date()) + '.json';
+    const nome = 'archivio-apia-' + etichetta + '-' + momento(new Date()) + '.json';
     await scriviFile(copie, nome, typeof contenuto === 'string' ? contenuto : testo(contenuto));
     return NOME_COPIE + '/' + nome;
   }

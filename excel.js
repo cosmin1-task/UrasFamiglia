@@ -1,4 +1,4 @@
-/* Uras Famiglia - crea un file Excel (.xlsx) senza librerie esterne.
+/* Apia - crea un file Excel (.xlsx) senza librerie esterne.
    Un .xlsx e' una cartella compressa (zip) con dentro alcuni file XML.
    Qui il zip e' "senza compressione": i file sono piccoli e cosi' il codice
    resta corto e funziona anche senza internet.
