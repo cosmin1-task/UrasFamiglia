@@ -22,7 +22,7 @@
         <div class="marchio-sotto">Clienti e fornitori</div>
       </div>
     </div>
-    <div class="stato-archivio" id="stato-archivio" aria-live="polite"></div>
+    <div class="stato-archivio" id="stato-archivio" aria-live="polite"><div id="stato-conteggi"></div><a href="#backup" class="stato-cartella" id="stato-cartella"></a></div>
   </div>
   <nav class="schede" aria-label="Pagine">
     <a class="scheda" href="#cliente" data-pagina="cliente"><span class="scheda-icona" aria-hidden="true">👤</span>Nuova Anagrafica<br>Cliente</a>
@@ -33,6 +33,8 @@
     <a class="scheda" href="#backup" data-pagina="backup"><span class="scheda-icona" aria-hidden="true">💾</span>Backup e<br>Ripristino</a>
   </nav>
 </header>
+
+<div class="promemoria" id="avviso-cartella" role="status" hidden></div>
 
 <div class="promemoria" id="promemoria-backup" hidden>
   <span>💾 Non fai un backup da un po'. Ti consiglio di farne uno adesso: richiede pochi secondi.</span>
@@ -146,7 +148,12 @@
   <!-- ================= BACKUP E RIPRISTINO ================= -->
   <section class="pagina" id="pagina-backup" hidden>
     <h1>Backup e Ripristino</h1>
-    <p class="spiega">I dati sono salvati <strong>solo in questo computer</strong>, dentro questo browser. Il backup è una copia di sicurezza in un file: conservala in una chiavetta USB o mandala per mail a te stesso.</p>
+    <p class="spiega">I dati sono salvati in questo browser e, se l'hai scelta, anche in una <strong>cartella del computer</strong>, in automatico. Il backup è una copia in più, da fare ogni tanto: conservala in una chiavetta USB o mandala per mail a te stesso.</p>
+    <div class="riquadro evidenza" id="riquadro-cartella">
+      <h2>📁 Salvataggio automatico nella cartella</h2>
+      <div id="corpo-cartella"></div>
+      <div class="messaggio" id="messaggio-cartella" role="status" hidden></div>
+    </div>
     <div class="riquadro">
       <h2>In archivio adesso</h2>
       <div class="conteggi" id="conteggi"></div>
@@ -176,6 +183,7 @@
 <script src="archivio.js"></script>
 <script src="excel.js"></script>
 <script src="memoria.js"></script>
+<script src="cartella.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -60,7 +60,12 @@ strong { font-weight: 650; }
 .marchio img { border-radius: 9px; background: #fff; }
 .marchio-nome { font-size: 1.3rem; font-weight: 700; letter-spacing: .01em; }
 .marchio-sotto { font-size: .85rem; opacity: .85; }
-.stato-archivio { font-size: .85rem; opacity: .9; text-align: right; }
+.stato-archivio { font-size: .85rem; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: .2rem; }
+.stato-archivio #stato-conteggi { opacity: .9; }
+.stato-cartella { color: #fff; text-decoration: none; padding: .1rem .55rem; border-radius: 99px; background: rgba(255,255,255,.12); }
+.stato-cartella:empty { display: none; }
+.stato-cartella.bene { background: rgba(255,255,255,.18); }
+.stato-cartella.attenzione { background: #f3d27a; color: #3d2c00; font-weight: 600; }
 
 .schede {
   display: flex;
@@ -88,6 +93,10 @@ strong { font-weight: 650; }
 .scheda.attiva { background: var(--sfondo); color: var(--inchiostro); font-weight: 650; }
 .scheda-icona { font-size: 1.25rem; }
 
+.promemoria.grave { background: var(--rosso-chiaro); border-color: #e3a49b; }
+.azioni-striscia { display: inline-flex; gap: .5rem; flex-wrap: wrap; }
+.piccolo { font-size: .9rem; color: var(--tenue); }
+.ok-grande { font-size: 1.1rem; color: var(--verde); font-weight: 600; }
 .promemoria {
   max-width: 1200px;
   margin: 1rem auto 0;

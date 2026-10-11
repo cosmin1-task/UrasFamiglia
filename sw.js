@@ -5,9 +5,9 @@
    I DATI non passano di qui: stanno nella memoria del browser (IndexedDB)
    e un aggiornamento dell'app non li tocca. */
 
-const CACHE = 'uras-famiglia-v1';
+const CACHE = 'uras-famiglia-v2';
 const FILE = [
-  './', 'index.html', 'stile.css', 'archivio.js', 'excel.js', 'memoria.js', 'app.js',
+  './', 'index.html', 'stile.css', 'archivio.js', 'excel.js', 'memoria.js', 'cartella.js', 'app.js',
   'manifest.webmanifest', 'icone/icona-192.png', 'icone/icona-512.png', 'icone/icona-180.png',
 ];
 

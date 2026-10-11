@@ -40,7 +40,7 @@
   /* ---------- archivio vuoto e aggiornamenti di versione ---------- */
 
   function nuovo() {
-    return { versione: VERSIONE, prossimoId: 1, tipologie: [], anagrafiche: [], associazioni: [], ultimoBackup: null };
+    return { versione: VERSIONE, prossimoId: 1, tipologie: [], anagrafiche: [], associazioni: [], ultimoBackup: null, salvato: null };
   }
 
   /* Porta un archivio salvato da una versione precedente dell'app alla forma
@@ -354,6 +354,7 @@
       formato: FORMATO_BACKUP,
       versione: VERSIONE,
       creato: (adesso || new Date()).toISOString(),
+      ultimoBackup: a.ultimoBackup || null,
       tipologie: a.tipologie.map((t) => ({ id: t.id, soggetto: t.soggetto, nome: t.nome })),
       anagrafiche: a.anagrafiche.map((x) => ({
         id: x.id, soggetto: x.soggetto, nome: x.nome, cognome: x.cognome,
@@ -451,6 +452,16 @@
         const perTel = tel ? stessi.find((x) => x.telefono && cifreTelefono(x.telefono) === tel) : null;
         const perMail = mail ? stessi.find((x) => x.mail && chiaveMail(x.mail) === mail) : null;
         if (!perTel && !perMail) {
+          // Telefono e mail non ci sono, ma c'e' gia' qualcuno con lo stesso nome:
+          // potrebbe essere la stessa persona a cui sono stati cambiati i contatti.
+          const omonimi = stessi.filter((x) => stessoNome(x, d));
+          if (omonimi.length) {
+            r.anagrafiche.nonImportate++;
+            r.segnalazioni.push('NON RICONOSCIUTA - ' + descrivi(d) + ': il telefono e la mail non corrispondono a nessuna scheda, ma c\'è già '
+              + (omonimi.length === 1 ? descrivi(omonimi[0]) : omonimi.length + ' schede con lo stesso nome')
+              + '. Potrebbe essere la stessa persona con i contatti cambiati, quindi non l\'ho importata. Se è una persona diversa, inseriscila a mano.');
+            continue;
+          }
           const n = aggiungiDaBackup(a, d, xb);
           mappaAna.set(xb.id, n.id); r.anagrafiche.aggiunte++;
           continue;
@@ -507,6 +518,48 @@
     return r;
   }
 
+  /* Trasforma un file di backup (gia' controllato con leggiBackup) in un
+     archivio completo, mantenendo gli stessi numeri identificativi.
+     Serve per il file nella cartella del PC, che ha lo stesso formato. */
+  function daBackup(b) {
+    const tipologie = b.tipologie
+      .filter((t) => SOGGETTI.includes(t.soggetto) && pulisci(t.nome))
+      .map((t) => ({ id: t.id, soggetto: t.soggetto, nome: pulisci(t.nome) }));
+    const anagrafiche = b.anagrafiche.map((x) => ({
+      id: x.id, soggetto: x.soggetto, nome: pulisci(x.nome), cognome: pulisci(x.cognome),
+      telefono: pulisci(x.telefono), mail: pulisci(x.mail).replace(/\s/g, ''),
+      creata: typeof x.creata === 'string' ? x.creata : null, modificata: typeof x.modificata === 'string' ? x.modificata : null,
+    }));
+    const idT = new Set(tipologie.map((t) => t.id));
+    const idA = new Set(anagrafiche.map((x) => x.id));
+    const viste = new Set();
+    const associazioni = b.associazioni.filter((s) => {
+      const k = s.anagraficaId + ':' + s.tipologiaId;
+      if (!idA.has(s.anagraficaId) || !idT.has(s.tipologiaId) || viste.has(k)) return false;
+      viste.add(k);
+      return true;
+    }).map((s) => ({ anagraficaId: s.anagraficaId, tipologiaId: s.tipologiaId }));
+    return aggiorna({
+      tipologie, anagrafiche, associazioni,
+      salvato: typeof b.creato === 'string' ? b.creato : null,
+      ultimoBackup: typeof b.ultimoBackup === 'string' ? b.ultimoBackup : null,
+    });
+  }
+
+  // Una "impronta" dei dati: due archivi con la stessa impronta hanno gli stessi dati.
+  function impronta(a) {
+    const b = creaBackup(a, new Date(0));
+    const perId = (x, y) => String(x.id).localeCompare(String(y.id), 'en', { numeric: true });
+    b.tipologie.sort(perId);
+    b.anagrafiche.sort(perId);
+    b.associazioni.sort((x, y) => String(x.anagraficaId + ':' + x.tipologiaId).localeCompare(String(y.anagraficaId + ':' + y.tipologiaId), 'en', { numeric: true }));
+    return JSON.stringify([b.tipologie, b.anagrafiche, b.associazioni]);
+  }
+
+  function vuotoArchivio(a) {
+    return !a.anagrafiche.length && !a.tipologie.length;
+  }
+
   function aggiungiDaBackup(a, d, xb) {
     const ora = new Date().toISOString();
     const x = Object.assign({ id: prendiId(a) }, d, {
@@ -525,6 +578,6 @@
     creaAnagrafica, modificaAnagrafica, aggiungiAssociazione, rimuoviAssociazione, eliminaAnagrafica,
     creaTipologia, rinominaTipologia, eliminaTipologia,
     cerca, cercaNellaPagina, riepilogo, estrai,
-    creaBackup, leggiBackup, ripristina,
+    creaBackup, leggiBackup, ripristina, daBackup, impronta, vuotoArchivio,
   };
 });

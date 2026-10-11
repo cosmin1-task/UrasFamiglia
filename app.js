@@ -50,16 +50,20 @@ const canale = 'BroadcastChannel' in window ? new BroadcastChannel('uras-famigli
    "Salva" in fretta, la seconda parte solo dopo che la prima e' salvata
    (e cosi' viene fermata dal controllo dei duplicati). */
 let coda = Promise.resolve();
-function cambia(regola) {
-  const fatto = coda.then(() => cambiaOra(regola));
+function cambia(regola, opz) {
+  const fatto = coda.then(() => cambiaOra(regola, opz));
   coda = fatto.catch(() => {});
   return fatto;
 }
 
-async function cambiaOra(regola) {
+/* opz.tieniOrario: non aggiornare l'ora dell'ultimo salvataggio (quando
+   carico i dati dalla cartella). opz.senzaCartella: non riscrivere la cartella. */
+async function cambiaOra(regola, opz) {
+  const o = opz || {};
   const copia = JSON.parse(JSON.stringify(stato.a));
   const esito = regola(copia);
   if (!esito || !esito.ok) return esito;
+  if (!o.tieniOrario) copia.salvato = new Date().toISOString();
   try {
     await Memoria.salva(copia);
   } catch (e) {
@@ -67,8 +71,18 @@ async function cambiaOra(regola) {
   }
   stato.a = copia;
   if (canale) canale.postMessage('salvato');
+  if (!o.senzaCartella) Cartella.scrivi(copia);
   ridisegna();
   return esito;
+}
+
+// Sostituisce tutto l'archivio (dati presi dalla cartella).
+function sostituisciArchivio(nuovo) {
+  return cambia((c) => {
+    Object.keys(c).forEach((k) => { delete c[k]; });
+    Object.assign(c, JSON.parse(JSON.stringify(nuovo)));
+    return { ok: true };
+  }, { tieniOrario: true, senzaCartella: true });
 }
 
 /* ---------- messaggi ---------- */
@@ -1093,7 +1107,250 @@ function promemoriaBackup() {
     const prima = a.anagrafiche.reduce((m, x) => Math.min(m, Date.parse(x.creata) || ora), ora);
     vecchio = ora - prima > 3 * giorno;
   }
-  $('#promemoria-backup').hidden = !(cambiDopo && vecchio);
+  $('#promemoria-backup').hidden = Cartella.stato === 'attiva' || !(cambiDopo && vecchio);
+}
+
+/* ---------- Cartella sul computer ----------
+   L'archivio vive in due posti: nel browser (sempre) e, se il cliente l'ha
+   scelta, in una cartella del PC. A ogni salvataggio si scrivono entrambi.
+   All'apertura, se i due sono diversi, vince quello salvato per ultimo;
+   l'altro non si butta: finisce come copia nella sottocartella "copie". */
+
+let cartellaPiuTardi = false;
+
+function ora(d) {
+  return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+function descriviArchivio(a) {
+  const nc = a.anagrafiche.filter((x) => x.soggetto === 'cliente').length;
+  return quanti(nc, 'cliente', 'clienti') + ', ' + quanti(a.anagrafiche.length - nc, 'fornitore', 'fornitori')
+    + ', ' + quanti(a.tipologie.length, 'tipologia', 'tipologie');
+}
+
+// Confronta browser e cartella e tiene il piu' recente. Rende attiva la cartella.
+async function sincronizzaCartella() {
+  let f;
+  try { f = await Cartella.leggi(); } catch (e) {
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) Cartella.imposta('serve-permesso');
+    else if (e && e.name === 'NotFoundError') Cartella.imposta('errore', 'Non trovo più la cartella «' + Cartella.nome + '»: forse è stata spostata, rinominata o cancellata. Scegli di nuovo la cartella.');
+    else Cartella.imposta('errore', 'Non riesco a leggere la cartella (' + (e && e.message ? e.message : 'errore sconosciuto') + '). Premi Riprova.');
+    return;
+  }
+  if (f.stato === 'rovinato') {
+    Cartella.imposta('rovinato', 'Il file ' + Cartella.NOME_FILE + ' nella cartella «' + Cartella.nome + '» non è leggibile: ' + f.errore
+      + ' Per non peggiorare le cose ho fermato il salvataggio nella cartella. I dati di questo computer sono al sicuro.');
+    return;
+  }
+  if (f.stato === 'assente') {
+    await Cartella.scrivi(stato.a, true);
+    return;
+  }
+  const daFile = A.daBackup(f.backup);
+  if (A.impronta(daFile) === A.impronta(stato.a)) {
+    Cartella.ricorda(f.modificato);
+    Cartella.imposta('attiva');
+    return;
+  }
+  const tFile = f.backup.creato || '';
+  const tQui = stato.a.salvato || '';
+  if (tFile > tQui) {
+    // La cartella e' piu' recente (es. dati modificati su un altro PC con OneDrive).
+    try { if (!A.vuotoArchivio(stato.a)) await Cartella.scriviCopia('di-questo-pc', stato.a); } catch (e) { /* proseguo */ }
+    const r = await sostituisciArchivio(daFile);
+    if (!r.ok) { Cartella.imposta('errore', r.errore); return; }
+    Cartella.ricorda(f.modificato);
+    Cartella.imposta('attiva');
+    avvisoBreve('📁 Ho caricato i dati più recenti dalla cartella «' + Cartella.nome + '».');
+    return;
+  }
+  // Questo computer e' piu' recente: tengo il file vecchio come copia e lo riscrivo.
+  try { await Cartella.scriviCopia('precedente', f.testo); } catch (e) { /* proseguo */ }
+  await Cartella.scrivi(stato.a, true);
+}
+
+// Primo collegamento (o cambio) della cartella: parte dal clic sul pulsante.
+async function scegliCartella() {
+  const box = $('#messaggio-cartella');
+  messaggio(box, null);
+  let dir;
+  try { dir = await Cartella.scegli(); } catch (e) {
+    if (e && e.name === 'AbortError') return; // ha chiuso la finestra senza scegliere
+    messaggio(box, 'ko', 'Non sono riuscito ad aprire la scelta della cartella (' + (e && e.message ? e.message : 'errore') + ').');
+    return;
+  }
+  let f;
+  try { f = await Cartella.leggi(dir); } catch (e) {
+    messaggio(box, 'ko', 'Non riesco a leggere la cartella «' + dir.name + '». Scegline un\'altra, per esempio dentro Documenti.');
+    return;
+  }
+  if (f.stato === 'rovinato') {
+    messaggio(box, 'ko', 'Nella cartella «' + dir.name + '» c\'è già un file ' + Cartella.NOME_FILE + ' che non riesco a leggere: ' + f.errore + ' Scegli un\'altra cartella.');
+    return;
+  }
+  let usaFile = false;
+  if (f.stato === 'ok') {
+    const daFile = A.daBackup(f.backup);
+    if (A.impronta(daFile) !== A.impronta(stato.a)) {
+      if (A.vuotoArchivio(stato.a)) usaFile = true;
+      else {
+        const scelta = await apriFinestra({
+          titolo: 'Nella cartella c\'è già un archivio',
+          corpo: '<p>La cartella «' + esc(dir.name) + '» contiene già dei dati di Uras Famiglia, diversi da quelli di questo computer. Quale vuoi usare?</p>'
+            + '<ul><li><strong>Nella cartella</strong>: ' + esc(descriviArchivio(daFile)) + (f.backup.creato ? ' (salvati il ' + esc(dataLeggibile(f.backup.creato)) + ')' : '') + '</li>'
+            + '<li><strong>Su questo computer</strong>: ' + esc(descriviArchivio(stato.a)) + (stato.a.salvato ? ' (salvati il ' + esc(dataLeggibile(stato.a.salvato)) + ')' : '') + '</li></ul>'
+            + '<p>Quelli che non scegli <strong>non vanno persi</strong>: li metto come copia nella sottocartella “copie”, e potrai recuperarli con “Ripristina backup”.</p>',
+          azioni: [
+            { testo: '📁 Usa quelli della cartella', classe: 'primario', valore: 'cartella' },
+            { testo: '💻 Usa quelli di questo computer', valore: 'computer' },
+            { testo: 'Annulla', valore: false },
+          ],
+        }).promessa;
+        if (!scelta) return;
+        usaFile = scelta === 'cartella';
+      }
+    }
+  }
+  try {
+    await Cartella.collega(dir);
+    if (usaFile) {
+      if (!A.vuotoArchivio(stato.a)) await Cartella.scriviCopia('di-questo-pc', stato.a);
+      const r = await sostituisciArchivio(A.daBackup(f.backup));
+      if (!r.ok) { messaggio(box, 'ko', r.errore); return; }
+      Cartella.ricorda(f.modificato);
+      Cartella.imposta('attiva');
+    } else {
+      if (f.stato === 'ok' && A.impronta(A.daBackup(f.backup)) !== A.impronta(stato.a)) await Cartella.scriviCopia('sostituito', f.testo);
+      const ok = await Cartella.scrivi(stato.a, true);
+      if (!ok) { disegnaCartella(); return; }
+    }
+  } catch (e) {
+    messaggio(box, 'ko', 'Non riesco a scrivere nella cartella «' + dir.name + '» (' + (e && e.message ? e.message : 'errore') + '). Scegline un\'altra, per esempio dentro Documenti.');
+    return;
+  }
+  messaggio(box, 'ok', usaFile
+    ? 'Fatto: ho caricato i dati dalla cartella «' + dir.name + '». Da ora ogni modifica viene salvata lì da sola.'
+    : 'Fatto: da ora ogni modifica viene salvata da sola nella cartella «' + dir.name + '».');
+  disegnaCartella();
+}
+
+async function collegaDiNuovo() {
+  if (!(await Cartella.chiediPermesso())) {
+    messaggio($('#messaggio-cartella'), 'ko', 'Il permesso non è stato dato, quindi per ora i dati si salvano solo in questo browser. Quando il browser lo chiede, scegli “Consenti a ogni visita”.');
+    disegnaCartella();
+    return;
+  }
+  await sincronizzaCartella();
+  disegnaCartella();
+}
+
+async function smettiCartella() {
+  const ok = await conferma('Smettere di salvare nella cartella?',
+    'I dati resteranno solo in questo browser. I file già presenti nella cartella «' + esc(Cartella.nome) + '» non vengono cancellati.',
+    'Sì, smetti', 'No, continua a salvare', true);
+  if (!ok) return;
+  await Cartella.scollega();
+  messaggio($('#messaggio-cartella'), 'info', 'Salvataggio nella cartella disattivato. Ricordati di fare il backup a mano.');
+  ridisegna();
+}
+
+// Il file "rovinato": lo metto da parte come copia e riscrivo con i dati di questo PC.
+async function sovrascriviRovinato() {
+  const ok = await conferma('Usare i dati di questo computer?',
+    'Il file illeggibile viene spostato come copia nella sottocartella “copie” e al suo posto scrivo i dati di questo computer (' + esc(descriviArchivio(stato.a)) + ').',
+    'Sì, procedi', 'No', false);
+  if (!ok) return;
+  try {
+    const f = await Cartella.leggi();
+    if (f.testo) await Cartella.scriviCopia('illeggibile', f.testo);
+  } catch (e) { /* proseguo */ }
+  await Cartella.scrivi(stato.a, true);
+  disegnaCartella();
+}
+
+function disegnaCartella() {
+  const st = Cartella.stato;
+  const nome = esc(Cartella.nome);
+  const banner = $('#avviso-cartella');
+  const riq = $('#riquadro-cartella');
+  const testata = $('#stato-cartella');
+  if (!banner || !riq) return;
+  const quando = Cartella.ultimoSalvataggio;
+  const P_SCEGLI = '<button type="button" class="pulsante primario" data-cartella="scegli">📁 Scegli la cartella</button>';
+  const P_CAMBIA = '<button type="button" class="pulsante" data-cartella="scegli">📁 Cambia cartella</button>';
+  const P_SMETTI = '<button type="button" class="pulsante pericolo" data-cartella="smetti">Smetti di salvare nella cartella</button>';
+  const P_COLLEGA = '<button type="button" class="pulsante primario" data-cartella="collega">🔗 Collega la cartella</button>';
+  const P_RIPROVA = '<button type="button" class="pulsante primario" data-cartella="riprova">↻ Riprova</button>';
+  const COSA_C_E = '<p class="piccolo">Nella cartella trovi il file <strong>' + Cartella.NOME_FILE + '</strong> (sempre aggiornato) e, nella sottocartella <strong>copie</strong>, una copia per ogni giorno di lavoro (le ultime ' + Cartella.COPIE_DA_TENERE + '). Se la cartella è dentro <strong>OneDrive</strong>, le copie finiscono anche su internet.</p>';
+  let b = '', r = '', t = '', classeT = '';
+  if (st === 'non-supportato') {
+    b = '<span>⚠ Questo browser non può salvare i dati in una cartella del computer. Apri Uras Famiglia con <strong>Microsoft Edge</strong> o <strong>Google Chrome</strong>.</span>';
+    r = '<p>Questo browser non permette di salvare in una cartella del computer. Per avere il salvataggio automatico apri l\'app con <strong>Microsoft Edge</strong> o <strong>Google Chrome</strong>. Nel frattempo usa il backup qui sotto.</p>';
+    t = 'Dati solo nel browser'; classeT = 'attenzione';
+  } else if (st === 'non-scelta') {
+    if (!cartellaPiuTardi) b = '<span>📁 <strong>Scegli una cartella del computer</strong> dove salvare i dati in automatico, così non si perdono.</span><span class="azioni-striscia">' + P_SCEGLI + '<button type="button" class="pulsante piccolo" data-cartella="dopo">Più tardi</button></span>';
+    r = '<p>Scegli una cartella: ogni volta che salvi qualcosa, l\'app scrive lì una copia completa dei dati, da sola. Ti consiglio di creare una cartella <strong>“Uras Famiglia”</strong> dentro <strong>Documenti</strong> (o dentro OneDrive, se lo usi).</p>'
+      + '<p class="piccolo">Il browser ti chiederà il permesso di modificare i file della cartella: rispondi <strong>“Consenti a ogni visita”</strong> (o “Modifica file”, poi “Consenti”).</p>'
+      + '<div class="azioni">' + P_SCEGLI + '</div>';
+    t = 'Cartella non scelta'; classeT = 'attenzione';
+  } else if (st === 'serve-permesso') {
+    b = '<span>📁 Per salvare nella cartella «' + nome + '» il browser chiede un permesso: premi il pulsante e scegli <strong>“Consenti a ogni visita”</strong>.</span><span class="azioni-striscia">' + P_COLLEGA + '</span>';
+    r = '<p>La cartella scelta è «<strong>' + nome + '</strong>», ma il browser chiede di nuovo il permesso. Premi <strong>Collega la cartella</strong> e scegli <strong>“Consenti a ogni visita”</strong>: così non te lo chiede più.</p>'
+      + '<p class="piccolo">Finché non la colleghi, le modifiche si salvano solo nel browser. Appena la colleghi le scrivo anche nella cartella.</p>'
+      + '<div class="azioni">' + P_COLLEGA + P_CAMBIA + P_SMETTI + '</div>';
+    t = 'Cartella da collegare'; classeT = 'attenzione';
+  } else if (st === 'attiva') {
+    r = '<p class="ok-grande">✓ Salvataggio automatico attivo nella cartella «<strong>' + nome + '</strong>».</p>'
+      + (quando ? '<p>Ultimo salvataggio: ' + (quando.toDateString() === new Date().toDateString() ? 'oggi alle ' + ora(quando) : dataLeggibile(quando.toISOString())) + '.</p>' : '')
+      + COSA_C_E + '<div class="azioni">' + P_CAMBIA + P_SMETTI + '</div>';
+    t = '✓ Salvato nella cartella' + (quando ? ' · ' + ora(quando) : ''); classeT = 'bene';
+  } else if (st === 'rovinato') {
+    b = '<span>⚠ ' + esc(Cartella.messaggio) + '</span><span class="azioni-striscia"><a class="pulsante piccolo" href="#backup">Vedi cosa fare</a></span>';
+    r = '<div class="messaggio ko">' + esc(Cartella.messaggio) + '</div>'
+      + '<p>Se qualcuno ha aperto o modificato il file a mano, chiudilo e premi <strong>Riprova</strong>. Altrimenti premi <strong>Usa i dati di questo computer</strong>: il file illeggibile viene messo da parte come copia.</p>'
+      + '<div class="azioni">' + P_RIPROVA + '<button type="button" class="pulsante" data-cartella="sovrascrivi">💻 Usa i dati di questo computer</button>' + P_CAMBIA + '</div>';
+    t = '⚠ Problema con la cartella'; classeT = 'attenzione';
+  } else if (st === 'errore') {
+    b = '<span>⚠ ' + esc(Cartella.messaggio) + ' I dati sono comunque salvati in questo browser.</span><span class="azioni-striscia">' + P_RIPROVA + '</span>';
+    r = '<div class="messaggio ko">' + esc(Cartella.messaggio) + '</div><p>Le modifiche sono comunque salvate in questo browser: appena la cartella torna disponibile le riscrivo lì.</p>'
+      + '<div class="azioni">' + P_RIPROVA + P_CAMBIA + P_SMETTI + '</div>';
+    t = '⚠ Problema con la cartella'; classeT = 'attenzione';
+  } else {
+    t = 'Apertura della cartella…';
+  }
+  banner.innerHTML = b;
+  banner.hidden = !b;
+  banner.classList.toggle('grave', st === 'errore' || st === 'rovinato');
+  const msg = $('#messaggio-cartella');
+  // il riquadro viene ridisegnato, il messaggio sotto resta
+  $('#corpo-cartella').innerHTML = r;
+  testata.textContent = t;
+  testata.className = 'stato-cartella ' + classeT;
+  promemoriaBackup();
+  if (msg && st === 'attiva' && msg.classList.contains('ko')) messaggio(msg, null);
+}
+
+function avviaCartella() {
+  Cartella.alCambio(disegnaCartella);
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cartella]');
+    if (!b) return;
+    const az = b.dataset.cartella;
+    if (az === 'scegli') scegliCartella();
+    else if (az === 'collega') collegaDiNuovo();
+    else if (az === 'smetti') smettiCartella();
+    else if (az === 'riprova') { Cartella.imposta('serve-sincronizzare'); sincronizzaCartella().then(disegnaCartella); }
+    else if (az === 'sovrascrivi') sovrascriviRovinato();
+    else if (az === 'dopo') { cartellaPiuTardi = true; disegnaCartella(); }
+  });
+  // Tornando sull'app: se il file nella cartella e' cambiato altrove
+  // (un'altra finestra, oppure OneDrive da un altro PC), lo ricarico.
+  const controlla = async () => {
+    if (document.visibilityState !== 'visible' || finestreAperte.length) return;
+    if (await Cartella.modificatoFuori()) { await sincronizzaCartella(); disegnaCartella(); }
+  };
+  document.addEventListener('visibilitychange', controlla);
+  window.addEventListener('focus', controlla);
 }
 
 /* ---------- disegno generale e navigazione ---------- */
@@ -1102,7 +1359,7 @@ function ridisegna() {
   const a = stato.a;
   const nc = a.anagrafiche.filter((x) => x.soggetto === 'cliente').length;
   const nf = a.anagrafiche.length - nc;
-  $('#stato-archivio').textContent = quanti(nc, 'cliente', 'clienti') + ' · ' + quanti(nf, 'fornitore', 'fornitori');
+  $('#stato-conteggi').textContent = quanti(nc, 'cliente', 'clienti') + ' · ' + quanti(nf, 'fornitore', 'fornitori');
   for (const s of A.SOGGETTI) {
     const pag = stato.pagine[s];
     if (!pag) continue;
@@ -1114,6 +1371,7 @@ function ridisegna() {
   disegnaTipologie(true);
   disegnaBackup();
   promemoriaBackup();
+  disegnaCartella();
 }
 
 const TITOLI = {
@@ -1150,11 +1408,15 @@ async function avvia() {
   }
   $('#caricamento').remove();
   Memoria.proteggi();
+  avviaCartella();
   ridisegna();
   mostraPagina();
   window.addEventListener('hashchange', mostraPagina);
   // un'altra finestra dell'app ha salvato: ricarico i dati
   if (canale) canale.onmessage = async () => { stato.a = await Memoria.carica(); ridisegna(); };
+  await Cartella.carica();
+  if (Cartella.stato === 'serve-sincronizzare') await sincronizzaCartella();
+  disegnaCartella();
 }
 
 avvia();

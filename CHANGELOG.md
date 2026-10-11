@@ -1,5 +1,12 @@
 # Cronologia
 
+## 1.1 — 11 ottobre 2026
+
+- Salvataggio automatico in una cartella del PC scelta dal cliente (Edge/Chrome): file `archivio-uras.json` riscritto a ogni modifica, una copia al giorno in `copie/` (ultime 30), lettura all'apertura e quando l'app torna in primo piano. Se browser e cartella sono diversi vince il più recente, l'altro viene conservato come copia.
+- Stato della cartella sempre visibile in alto a destra; striscia di avviso se la cartella non è scelta, va ricollegata o ha un problema.
+- Il promemoria del backup non compare più quando il salvataggio nella cartella è attivo.
+- Ripristino: una scheda con telefono e mail sconosciuti ma con lo stesso nome e cognome di una già presente viene segnalata invece di essere aggiunta.
+
 ## 1.0 — 11 ottobre 2026
 
 Prima versione, dalle minute dei due incontri con il cliente.

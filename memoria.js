@@ -75,5 +75,17 @@ const Memoria = (function () {
     return Promise.resolve(false);
   }
 
-  return { carica, salva, proteggi };
+  // Per conservare altre cose oltre all'archivio (es. la cartella scelta).
+  function scriviChiave(chiave, valore) {
+    return apri().then((d) => new Promise((ok, ko) => {
+      const t = d.transaction(NEGOZIO, 'readwrite');
+      if (valore === undefined) t.objectStore(NEGOZIO).delete(chiave);
+      else t.objectStore(NEGOZIO).put(valore, chiave);
+      t.oncomplete = () => ok();
+      t.onerror = () => ko(t.error);
+      t.onabort = () => ko(t.error);
+    }));
+  }
+
+  return { carica, salva, proteggi, leggiChiave: leggi, scriviChiave };
 })();

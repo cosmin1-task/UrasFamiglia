@@ -312,6 +312,50 @@ prova('file non valido rifiutato prima di importare', () => {
   assert.strictEqual(A.leggiBackup(JSON.stringify({ formato: A.FORMATO_BACKUP, versione: 99, tipologie: [], anagrafiche: [], associazioni: [] })).ok, false);
 });
 
+prova('ripristino: contatti cambiati ma stesso nome = segnalato, non duplicato', () => {
+  const { a, moto } = base();
+  const id = A.creaAnagrafica(a, 'cliente', { nome: 'Mario', cognome: 'Rossi', telefono: '3330000001' }, moto).anagrafica.id;
+  const b = A.leggiBackup(JSON.stringify(A.creaBackup(a))).backup;
+  A.modificaAnagrafica(a, id, { nome: 'Mario', cognome: 'Rossi', telefono: '3339999999' });
+  const r = A.ripristina(a, b);
+  assert.strictEqual(a.anagrafiche.length, 1);
+  assert.strictEqual(r.anagrafiche.nonImportate, 1);
+  assert.match(r.segnalazioni[0], /NON RICONOSCIUTA.*contatti cambiati/);
+});
+
+/* --- File nella cartella del PC --- */
+
+prova('archivio -> file -> archivio: stessi dati e stessi numeri', () => {
+  const a = archivioPieno();
+  a.salvato = '2026-10-11T12:00:00.000Z';
+  const b = A.leggiBackup(JSON.stringify(A.creaBackup(a, new Date(a.salvato)))).backup;
+  const c = A.daBackup(b);
+  assert.strictEqual(A.impronta(c), A.impronta(a));
+  assert.strictEqual(c.salvato, a.salvato);
+  // i nuovi numeri non si scontrano con quelli caricati
+  const t = A.creaTipologia(c, 'cliente', 'Nuova').tipologia;
+  assert.ok(!a.tipologie.concat(a.anagrafiche).some((x) => x.id === t.id));
+});
+
+prova('file con collegamenti a schede inesistenti: vengono scartati', () => {
+  const b = { formato: A.FORMATO_BACKUP, versione: 1, creato: '2026-01-01T00:00:00Z',
+    tipologie: [{ id: 1, soggetto: 'cliente', nome: 'Moto' }],
+    anagrafiche: [{ id: 2, soggetto: 'cliente', nome: 'A', cognome: 'B', telefono: '', mail: '' }],
+    associazioni: [{ anagraficaId: 2, tipologiaId: 1 }, { anagraficaId: 2, tipologiaId: 1 }, { anagraficaId: 9, tipologiaId: 1 }] };
+  const c = A.daBackup(A.leggiBackup(JSON.stringify(b)).backup);
+  assert.strictEqual(c.associazioni.length, 1);
+  assert.strictEqual(c.prossimoId, 3);
+});
+
+prova('impronta: cambia se cambiano i dati, non se cambia solo l\'orario', () => {
+  const a = archivioPieno();
+  const i1 = A.impronta(a);
+  a.salvato = new Date().toISOString();
+  assert.strictEqual(A.impronta(a), i1);
+  A.modificaAnagrafica(a, a.anagrafiche[0].id, Object.assign({}, a.anagrafiche[0], { nome: 'Altro' }));
+  assert.notStrictEqual(A.impronta(a), i1);
+});
+
 /* --- Minuta 1, punto 9: aggiornamenti --- */
 
 prova('un archivio salvato da prima resta intatto dopo l\'aggiornamento', () => {
